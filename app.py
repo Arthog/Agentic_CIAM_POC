@@ -50,7 +50,6 @@ st.markdown("""
 
 st.markdown("---") # Optional visual divider to separate instructions from the input box
 
-st.markdown("### Ask me to give system access, amend or delete data based with some associated attributes")
 user_query = st.text_input(
    
     
