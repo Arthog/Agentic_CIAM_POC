@@ -63,7 +63,9 @@ with col2:
                 fancy_ui.subheader("🤖 Agent Evaluation & Audit Trail")
                 fancy_ui.code(agent_logs, language="text")
                 
-                if "APPROVED" in agent_logs:
-                    fancy_ui.success("🔓 ACCESS GRANTED: Policy conditions fully satisfied.")
-                else:
-                    fancy_ui.error("🔒 ACCESS DENIED: Security architecture constraints breached.")
+                agent_logs_clean = str(agent_logs).upper()
+
+if "APPROVED" in agent_logs_clean:
+    fancy_ui.success("🔓 ACCESS GRANTED: Policy conditions fully satisfied.")
+else:
+    fancy_ui.error("🔒 ACCESS DENIED: Security architecture constraints breached.")
