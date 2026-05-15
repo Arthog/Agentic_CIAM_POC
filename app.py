@@ -1,71 +1,77 @@
-# app.py
-import streamlit as fancy_ui
+import streamlit as st
 from agent import process_natural_language_request
-from security_engine import USER_DIRECTORY
 
-# Set up the webpage layout
-fancy_ui.set_page_config(page_title="AI-Driven ABAC Orchestrator", layout="wide")
+# =====================================================================
+# UI CONFIGURATION & STYLING
+# =====================================================================
+st.set_page_config(
+    page_title="Agentic CIAM PoC Engine",
+    page_icon="🛡️",
+    layout="wide"
+)
 
-fancy_ui.title("🛡️ Agentic CIAM & Attribute-Based Access Control Engine")
-fancy_ui.caption("Technical PM Showcase: Combining Natural Language Orchestration with Deterministic Guardrails")
+# Custom helper to match your UI component definitions
+class FancyUI:
+    def success(self, message):
+        st.success(message, icon="🔓")
+        
+    def error(self, message):
+        st.error(message, icon="🔒")
+        
+    def info(self, title, content):
+        with st.expander(title, expanded=True):
+            st.code(content, language="json")
 
-# Layout the portfolio cleanly using columns
-col1, col2 = fancy_ui.columns([1, 2])
+fancy_ui = FancyUI()
 
-with col1:
-    fancy_ui.header("📋 System Identities (User Directory)")
-    fancy_ui.write("These are the live attributes stored securely in the CIAM database:")
-    fancy_ui.json(USER_DIRECTORY)
-    
-    fancy_ui.divider()
-    fancy_ui.markdown("""
-    **How it works under the hood:**
-    1. The user inputs a messy, natural language request.
-    2. **Gemini 2.5 Flash** parses the intent and enforces a strict structured data model (Pydantic).
-    3. The extracted attributes are passed directly to a zero-trust **Deterministic Policy Engine**.
-    4. Access is granted or denied strictly based on ABAC attributes—the AI cannot hallucinate a breach.
-    """)
+# =====================================================================
+# SESSION STATE INITIALIZATION
+# =====================================================================
+# Ensures clean state tracking across app reloads in the cloud environment
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = True
+if "user_role" not in st.session_state:
+    st.session_state["user_role"] = "admin"
 
-with col2:
-    fancy_ui.header("💬 Interactive Access Portal")
-    fancy_ui.write("Simulate a user or application asking for access to a protected system resource.")
-    
-    # Provide clickable portfolio examples
-    example_prompts = [
-        "Select an example...",
-        "Hey there, could you let Alex open up the Q4 financial budget spreadsheet?",
-        "Sam here from marketing, I need to check the ledger to see if a client invoice cleared."
-    ]
-    
-    selected_example = fancy_ui.selectbox("Quick-test Scenarios:", example_prompts)
-    
-    # Text input field for custom prompt hacking
-    user_query = fancy_ui.text_input("Or write a custom access request (Try to prompt-inject it!):", 
-                                     value="" if selected_example == "Select an example..." else selected_example)
-    
-    if fancy_ui.button("Submit Request to Agent", type="primary"):
-        if user_query:
-            with fancy_ui.spinner("Agent evaluating request constraints..."):
-                # Redirect our print logs cleanly to show the agent's thought process in the UI
-                import sys
-                from io import StringIO
+# =====================================================================
+# MAIN USER INTERFACE RENDER
+# =====================================================================
+st.title("🛡️ Agentic CIAM Demonstration Workspace")
+st.subheader("Dynamic Policy & Governance Evaluation Engine")
+st.markdown("---")
+
+st.markdown("### Input Natural Language Access Request")
+user_query = st.text_input(
+    label="Enter context (e.g., 'Requesting access to production database from internal subnet to run diagnostic script')",
+    placeholder="Type access request context here..."
+)
+
+# Execution Trigger
+if st.button("Evaluate Request", type="primary"):
+    if user_query.strip() == "":
+        st.warning("Please provide a valid text input to evaluate.")
+    else:
+        with st.spinner("Orchestrating agentic policy evaluation via Gemini..."):
+            try:
+                # Execution handoff to core agent.py engine
+                agent_logs = process_natural_language_request(user_query)
                 
-                old_stdout = sys.stdout
-                sys.stdout = buffer = StringIO()
-                
-                # Execute the agent block we wrote earlier
-                process_natural_language_request(user_query)
-                
-                sys.stdout = old_stdout
-                agent_logs = buffer.getvalue()
-                
-                # Display the visual results based on engine responses
-                fancy_ui.subheader("🤖 Agent Evaluation & Audit Trail")
-                fancy_ui.code(agent_logs, language="text")
-                
+                # =====================================================
+                # FIXED DEFENSIVE STRING HANDLING
+                # =====================================================
+                # Converts the response payload cleanly to a string and forces uppercase
+                # This guarantees character-case mismatches or JSON-wrapping won't trigger false negatives.
                 agent_logs_clean = str(agent_logs).upper()
-
-if "APPROVED" in agent_logs_clean:
-    fancy_ui.success("🔓 ACCESS GRANTED: Policy conditions fully satisfied.")
-else:
-    fancy_ui.error("🔒 ACCESS DENIED: Security architecture constraints breached.")
+                
+                # Core Engine Log Output
+                fancy_ui.info("Orchestrator Logs & Token Evaluation Schema", str(agent_logs))
+                
+                # Security Gate Evaluation Conditional Check
+                if "APPROVED" in agent_logs_clean:
+                    fancy_ui.success("ACCESS GRANTED: Policy conditions fully satisfied.")
+                else:
+                    fancy_ui.error("ACCESS DENIED: Security architecture constraints breached.")
+                    
+            except Exception as e:
+                st.error(f"Execution Error encountered during agent dispatch: {str(e)}")
+                st.info("Debugging context:", f"Type: {type(e).__name__}")
