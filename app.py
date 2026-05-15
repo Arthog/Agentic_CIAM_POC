@@ -44,7 +44,7 @@ st.markdown("---")
 with st.container(gap="small"):
     st.markdown(
     "**How to use this PoC Engine:** \n"
-    "* Enter a natural language request detailing the action you want to take.** \n"
+    "* Enter a natural language request detailing the action you want to take. \n"
     "* Include relevant contextual attributes such as your **role**, **location**, **network zone**, or **time of day**.\n"
     "* The agent will dynamically evaluate these attributes against corporate policy thresholds."
             )
