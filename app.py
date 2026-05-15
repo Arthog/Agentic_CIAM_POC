@@ -47,7 +47,7 @@ with st.container(gap="small"):
     * Enter a natural language request detailing the action you want to take.
     * Include relevant contextual attributes such as your **role**, **location**, **network zone**, or **time of day**.
     * The agent will dynamically evaluate these attributes against corporate policy thresholds.
-    """)
+    """.strip())
     st.markdown("---")
 user_query = st.text_input(
    
