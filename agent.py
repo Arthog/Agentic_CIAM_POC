@@ -25,7 +25,7 @@ def process_natural_language_request(user_query):
     
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-2.5-flash-lite',
             contents=user_query,
             config=config
         )
