@@ -48,7 +48,7 @@ with st.container(gap="small"):
     "* Include relevant contextual attributes such as your **role**, **location**, **network zone**, or **time of day**.\n"
     "* The agent will dynamically evaluate these attributes against corporate policy thresholds."
             )
-    st.markdown("---")
+    #st.markdown("---")
 user_query = st.text_input(
    
     
