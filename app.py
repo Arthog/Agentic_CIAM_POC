@@ -45,7 +45,7 @@ user_query = st.text_input(
    
     
     label="Enter context (e.g., 'Requesting access to production database from internal subnet to run diagnostic script')",
-    #max_chars=500,  # <--- Keeps the prompt short and input token costs predictably microscopic
+    max_chars=500,  # <--- Keeps the prompt short and input token costs predictably microscopic
     placeholder="Type access request context here..."
                
 )
