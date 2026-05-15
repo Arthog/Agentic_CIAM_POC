@@ -1,29 +1,26 @@
-# agent.py
-# agent.py
-from pydantic import BaseModel, Field
 from google import genai
-from security_engine import evaluate_abac_policy
+from google.genai import types
+from pydantic import BaseModel, Field # Keep these!
 
 client = genai.Client()
 
-class AccessRequest(BaseModel):
-    user_id: str = Field(description="The unique ID of the user. Map 'Alex' to 'user_123'. If the prompt mentions a suspicious device, an unknown location, or an attack scenario for Alex, map to 'user_123_compromised'. Map 'Sam' to 'user_789'.")
-    resource: str = Field(description="The system resource requested. Map anything ledger/budget to 'financial_ledger'.")
+# Keep your schema definition
+class SecurityResponse(BaseModel):
+    intent: str = Field(description="The detected user intent")
+    risk_score: int = Field(description="Risk rating from 1 to 5")
 
-def process_natural_language_request(user_prompt: str):
-    print(f"\n[User Prompt]: '{user_prompt}'")
+def process_natural_language_request(user_query):
+    config = types.GenerateContentConfig(
+        system_instruction="Analyze the CIAM request.",
+        temperature=0.1,
+        # This tells the Gemini gateway to validate against your Pydantic schema
+        response_mime_type="application/json",
+        response_schema=SecurityResponse, 
+    )
     
     response = client.models.generate_content(
         model='gemini-2.5-flash',
-        contents=f"Extract the access request details: {user_prompt}",
-        config={
-            'response_mime_type': 'application/json',
-            'response_schema': AccessRequest,
-        }
+        contents=user_query,
+        config=config
     )
-    
-    parsed_request = AccessRequest.model_validate_json(response.text)
-    print(f"[Agent Extract]: User ID: '{parsed_request.user_id}', Resource: '{parsed_request.resource}'")
-    
-    security_verdict = evaluate_abac_policy(parsed_request.user_id, parsed_request.resource)
-    print(f"[Security Engine Decision]: {security_verdict}\n")
+    return response.text
