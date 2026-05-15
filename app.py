@@ -42,6 +42,8 @@ st.markdown("---")
 
 st.markdown("### Input Natural Language Access Request")
 user_query = st.text_input(
+   
+    max_chars=500  # <--- Keeps the prompt short and input token costs predictably microscopic
     label="Enter context (e.g., 'Requesting access to production database from internal subnet to run diagnostic script')",
     placeholder="Type access request context here..."
 )
@@ -49,6 +51,7 @@ user_query = st.text_input(
 # Execution Trigger
 if st.button("Evaluate Request", type="primary"):
     if user_query.strip() == "":
+        
         st.warning("Please provide a valid text input to evaluate.")
     else:
         with st.spinner("Orchestrating agentic policy evaluation via Gemini..."):
