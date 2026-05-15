@@ -40,16 +40,15 @@ st.title("🛡️ Agentic ABAC Workspace")
 st.subheader("Dynamic Policy & Governance Evaluation Engine")
 st.markdown("---")
 
-# --- Added Instructions Block ---
-st.markdown("""
-**How to use this PoC Engine:**
-* Enter a natural language request detailing the action you want to take.
-* Include relevant contextual attributes such as your **role**, **location**, **network zone**, or **time of day**.
-* The agent will dynamically evaluate these attributes against corporate policy thresholds.
-""")
-
-st.markdown("---") # Optional visual divider to separate instructions from the input box
-
+# Wrap the instructions and the line break in a tight container
+with st.container(gap="small"):
+    st.markdown("""
+    **How to use this PoC Engine:**
+    * Enter a natural language request detailing the action you want to take.
+    * Include relevant contextual attributes such as your **role**, **location**, **network zone**, or **time of day**.
+    * The agent will dynamically evaluate these attributes against corporate policy thresholds.
+    """)
+    st.markdown("---")
 user_query = st.text_input(
    
     
