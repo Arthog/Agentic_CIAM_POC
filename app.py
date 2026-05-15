@@ -43,9 +43,11 @@ st.markdown("---")
 st.markdown("### Input Natural Language Access Request")
 user_query = st.text_input(
    
-    max_chars=500  # <--- Keeps the prompt short and input token costs predictably microscopic
+    
     label="Enter context (e.g., 'Requesting access to production database from internal subnet to run diagnostic script')",
+    max_chars=500  # <--- Keeps the prompt short and input token costs predictably microscopic
     placeholder="Type access request context here..."
+               
 )
 
 # Execution Trigger
