@@ -36,11 +36,11 @@ if "user_role" not in st.session_state:
 # =====================================================================
 # MAIN USER INTERFACE RENDER
 # =====================================================================
-st.title("🛡️ Agentic CIAM Demonstration Workspace")
+st.title("🛡️ Agentic ABAC Workspace")
 st.subheader("Dynamic Policy & Governance Evaluation Engine")
 st.markdown("---")
 
-st.markdown("### Input Natural Language Access Request")
+st.markdown("### Ask me to give system access, amend or delete data based with some associated attributes")
 user_query = st.text_input(
    
     
