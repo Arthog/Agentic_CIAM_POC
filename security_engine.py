@@ -1,5 +1,3 @@
-# security_engine.py
-
 USER_DIRECTORY = {
     "user_123": {
         "name": "Alex",
@@ -28,13 +26,44 @@ USER_DIRECTORY = {
     }
 }
 
+RESOURCE_ALIASES = {
+    "budget": "financial_ledger",
+    "financial budget": "financial_ledger",
+    "financial ledger": "financial_ledger",
+    "ledger": "financial_ledger",
+    "q4 financial budget spreadsheet": "financial_ledger",
+}
+
+USER_ALIASES = {
+    "alex": "user_123",
+    "alex compromised": "user_123_compromised",
+    "sam": "user_789",
+}
+
+
+def resolve_user_id(user_reference: str) -> str:
+    normalized_reference = user_reference.strip().lower()
+    return USER_ALIASES.get(normalized_reference, user_reference)
+
+
+def resolve_resource_id(resource_reference: str) -> str:
+    normalized_reference = resource_reference.strip().lower()
+    return RESOURCE_ALIASES.get(normalized_reference, resource_reference)
+
 def evaluate_abac_policy(user_id: str, resource: str) -> dict:
-    user_attributes = USER_DIRECTORY.get(user_id)
+    resolved_user_id = resolve_user_id(user_id)
+    resolved_resource = resolve_resource_id(resource)
+    user_attributes = USER_DIRECTORY.get(resolved_user_id)
     
     if not user_attributes:
-        return {"status": "DENIED", "reason": "User ID not found in system."}
+        return {
+            "status": "DENIED",
+            "reason": "User ID not found in system.",
+            "user_id": resolved_user_id,
+            "resource": resolved_resource,
+        }
         
-    if resource == "financial_ledger":
+    if resolved_resource == "financial_ledger":
         # Base ABAC Rule: Must be Finance and Level 3
         if user_attributes["department"] == "Finance" and user_attributes["clearance"] == "Level_3":
             
@@ -42,11 +71,28 @@ def evaluate_abac_policy(user_id: str, resource: str) -> dict:
             if not user_attributes["device_trusted"] or user_attributes["location"] == "Unknown":
                 return {
                     "status": "STEP_UP_REQUIRED", 
-                    "reason": "Department rules met, but untrusted device/location detected. Triggering Multi-Factor Authentication (MFA)."
+                    "reason": "Department rules met, but untrusted device/location detected. Triggering Multi-Factor Authentication (MFA).",
+                    "user_id": resolved_user_id,
+                    "resource": resolved_resource,
                 }
                 
-            return {"status": "APPROVED", "reason": "Access granted based on Department, Clearance, and Device Trust matching."}
+            return {
+                "status": "APPROVED",
+                "reason": "Access granted based on Department, Clearance, and Device Trust matching.",
+                "user_id": resolved_user_id,
+                "resource": resolved_resource,
+            }
         else:
-            return {"status": "DENIED", "reason": "Insufficient clearance or incorrect department for this asset."}
+            return {
+                "status": "DENIED",
+                "reason": "Insufficient clearance or incorrect department for this asset.",
+                "user_id": resolved_user_id,
+                "resource": resolved_resource,
+            }
             
-    return {"status": "DENIED", "reason": "Requested resource is unmapped or restricted."}
+    return {
+        "status": "DENIED",
+        "reason": "Requested resource is unmapped or restricted.",
+        "user_id": resolved_user_id,
+        "resource": resolved_resource,
+    }
