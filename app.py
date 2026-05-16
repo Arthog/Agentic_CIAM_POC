@@ -1,3 +1,5 @@
+import json
+
 import streamlit as st
 from agent import process_natural_language_request
 
@@ -64,24 +66,24 @@ if st.button("Evaluate Request", type="primary"):
         
         st.warning("Please provide a valid text input to evaluate.")
     else:
-        with st.spinner("Orchestrating agentic policy evaluation via Gemini..."):
+        with st.spinner("Extracting request context and evaluating ABAC policy..."):
             try:
                 # Execution handoff to core agent.py engine
-                agent_logs = process_natural_language_request(user_query)
-                
-                # =====================================================
-                # FIXED DEFENSIVE STRING HANDLING
-                # =====================================================
-                # Converts the response payload cleanly to a string and forces uppercase
-                # This guarantees character-case mismatches or JSON-wrapping won't trigger false negatives.
-                agent_logs_clean = str(agent_logs).upper()
+                evaluation = process_natural_language_request(user_query)
+                policy_decision = evaluation["policy_decision"]
+                policy_status = policy_decision["status"]
                 
                 # Core Engine Log Output
-                fancy_ui.info("Orchestrator Logs & Token Evaluation Schema", str(agent_logs))
+                fancy_ui.info(
+                    "Orchestrator Logs & Policy Evaluation Schema",
+                    json.dumps(evaluation, indent=2)
+                )
                 
                 # Security Gate Evaluation Conditional Check
-                if "APPROVED" in agent_logs_clean:
+                if policy_status == "APPROVED":
                     fancy_ui.success("ACCESS GRANTED: Policy conditions fully satisfied.")
+                elif policy_status == "STEP_UP_REQUIRED":
+                    st.warning("STEP-UP REQUIRED: Additional verification is required before access can be granted.")
                 else:
                     fancy_ui.error("ACCESS DENIED: Security architecture constraints breached.")
                     

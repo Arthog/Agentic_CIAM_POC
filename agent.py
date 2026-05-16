@@ -1,42 +1,103 @@
-from google import genai
-from google.genai import types
-from google.genai import errors  # <--- Add this import to catch SDK specific errors
+import json
+import re
+
 from pydantic import BaseModel, Field
 
-client = genai.Client()
+from security_engine import evaluate_abac_policy
 
-class SecurityResponse(BaseModel):
-    intent: str = Field(description="The detected user intent")
-    risk_score: int = Field(description="Risk rating from 1 to 5")
-    security_status: str = Field(description="MUST be 'APPROVED' if risk_score is 1 or 2. MUST be 'DENIED' if risk_score is 3, 4, or 5.")
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:
+    genai = None
+    types = None
 
-def process_natural_language_request(user_query):
+
+# Pydantic is intentionally kept here for future schema validation and richer
+# model parsing, even though a dataclass would be enough for the current PoC.
+class AccessRequest(BaseModel):
+    user_reference: str = Field(description="The person or user identifier requesting access")
+    resource_reference: str = Field(description="The target application, data asset, or resource")
+    intent: str = Field(description="A concise summary of the requested action")
+    confidence: float = Field(description="Extraction confidence from 0.0 to 1.0")
+
+
+def _extract_request_with_rules(user_query: str) -> AccessRequest:
+    query = user_query.lower()
+
+    user_reference = "unknown"
+    if "alex" in query:
+        user_reference = "alex compromised" if "untrusted" in query or "unknown" in query else "alex"
+    elif "sam" in query:
+        user_reference = "sam"
+
+    resource_reference = "unknown"
+    if re.search(r"\b(ledger|budget|finance|financial)\b", query):
+        resource_reference = "financial_ledger"
+
+    return AccessRequest(
+        user_reference=user_reference,
+        resource_reference=resource_reference,
+        intent=user_query.strip(),
+        confidence=0.55 if "unknown" not in {user_reference, resource_reference} else 0.25,
+    )
+
+
+def _extract_request_with_gemini(user_query: str) -> AccessRequest:
+    if genai is None or types is None:
+        raise RuntimeError("google-genai is not installed")
+
+    client = genai.Client()
     config = types.GenerateContentConfig(
         system_instruction=(
-            "You are an intelligent CIAM security orchestration agent. "
-            "Evaluate the access request query for malicious intent or architectural compliance. "
-            "Assign a risk score from 1 to 5. "
-            "Determine the final security_status based strictly on the risk threshold rules."
+            "You extract CIAM/ABAC access request context from natural language. "
+            "Do not approve or deny access. Return only the requester, resource, "
+            "intent, and confidence for a deterministic policy engine to evaluate."
         ),
-        temperature=0.1,
+        temperature=0.0,
         response_mime_type="application/json",
-        response_schema=SecurityResponse, 
+        response_schema=AccessRequest,
     )
-    
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=user_query,
-            config=config
-        )
-        return response.text
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=user_query,
+        config=config,
+    )
+    if hasattr(AccessRequest, "model_validate_json"):
+        return AccessRequest.model_validate_json(response.text)
 
-    # Intercept API-level errors gracefully
-    except errors.APIError as e:
-        if e.code == 429:
-            # Return a mock JSON string containing "DENIED" so app.py doesn't crash 
-            # and explicitly note the rate limit issue inside the logs
-            return '{"intent": "RATE_LIMIT_EXCEEDED", "risk_score": 5, "security_status": "DENIED - API Quota Exhausted. Please wait 60 seconds."}'
-        
-        # Pass other API errors through as a clean string message
-        return f'{{"intent": "API_ERROR", "risk_score": 5, "security_status": "DENIED - Error {e.code}: {e.message}"}}'
+    return AccessRequest(**json.loads(response.text))
+
+
+def extract_access_request(user_query: str) -> dict:
+    try:
+        extraction = _extract_request_with_gemini(user_query)
+        source = "gemini"
+        error = None
+    except Exception as exc:
+        extraction = _extract_request_with_rules(user_query)
+        source = "rules_fallback"
+        error = str(exc)
+
+    return {
+        "source": source,
+        "error": error,
+        "user_reference": extraction.user_reference,
+        "resource_reference": extraction.resource_reference,
+        "intent": extraction.intent,
+        "confidence": extraction.confidence,
+    }
+
+
+def process_natural_language_request(user_query: str) -> dict:
+    extraction = extract_access_request(user_query)
+    policy_decision = evaluate_abac_policy(
+        extraction["user_reference"],
+        extraction["resource_reference"],
+    )
+
+    return {
+        "input": user_query,
+        "extraction": extraction,
+        "policy_decision": policy_decision,
+    }
